@@ -7,6 +7,6 @@ go run main.go
 ## Build 
 go build
 
-### After build
-## Run
+## After build
+### Run
 ./blackjack
