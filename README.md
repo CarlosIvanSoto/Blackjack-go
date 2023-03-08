@@ -1,10 +1,10 @@
 # Blackjack-go
 Blackjack game with go
 
-## Comands
-### Test
-go run main.go
-### Build 
-go build
-### After build run
-./blackjack
+## Commands
+### test
+    go run main.go
+### build
+    go build
+### run (after build)
+    ./blackjack
