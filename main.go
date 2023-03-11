@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-func main() {
-	game := NewBlackjackGame()
-	game.Run()
-}
-
 type Card struct {
 	Rank int
 	Suit int
@@ -23,11 +18,11 @@ func (c Card) String() string {
 	case 0:
 		suitStr = "♠"
 	case 1:
-		suitStr = "♥"
+		suitStr = "♥️"
 	case 2:
-		suitStr = "♦"
+		suitStr = "♦️"
 	case 3:
-		suitStr = "♣"
+		suitStr = "♣️"
 	}
 	var rankStr string
 	switch c.Rank {
@@ -97,16 +92,10 @@ func NewDeck() *Deck {
 func (d *Deck) Shuffle() {
 	rand.Seed(time.Now().UnixNano())
 
-	// Recorre la baraja en orden inverso y para cada carta, selecciona una carta aleatoria anterior y las intercambia.
 	for i := len(d.Cards) - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)
 		d.Cards[i], d.Cards[j] = d.Cards[j], d.Cards[i]
 	}
-
-	// for i := range d.Cards {
-	// 	j := rand.Intn(i + 1)
-	// 	d.Cards[i], d.Cards[j] = d.Cards[j], d.Cards[i]
-	// }
 }
 
 func (d *Deck) Deal(h *Hand) {
@@ -120,131 +109,147 @@ func (d *Deck) Deal(h *Hand) {
 
 type BlackjackGame struct {
 	Deck         *Deck
-	PlayerHand   Hand
-	DealerHand   Hand
-	PlayerScore  int
-	DealerScore  int
+	Hands        []Hand
+	Scores       []int
 	IsGameOver   bool
 	IsPlayerTurn bool
 }
 
-func NewBlackjackGame() *BlackjackGame {
+func NewBlackjackGame(numPlayers int) *BlackjackGame {
 	deck := NewDeck()
 	deck.Shuffle()
-	playerHand := Hand{}
-	dealerHand := Hand{}
+	hands := make([]Hand, numPlayers)
+	scores := make([]int, numPlayers)
 	game := BlackjackGame{
 		Deck:         deck,
-		PlayerHand:   playerHand,
-		DealerHand:   dealerHand,
-		PlayerScore:  0,
-		DealerScore:  0,
+		Hands:        hands,
+		Scores:       scores,
 		IsGameOver:   false,
 		IsPlayerTurn: true,
 	}
-	game.Deck.Deal(&game.PlayerHand)
-	game.Deck.Deal(&game.DealerHand)
-	game.Deck.Deal(&game.PlayerHand)
-	game.Deck.Deal(&game.DealerHand)
+	for i := 0; i < numPlayers; i++ {
+		game.Deck.Deal(&game.Hands[i])
+		game.Deck.Deal(&game.Hands[i])
+	}
 	return &game
 }
 
 func (g *BlackjackGame) playDealer() {
-	if g.PlayerHand.handValue() > 21 {
-		fmt.Println("Dealer:", g.DealerHand.handString())
-		g.IsGameOver = true
-		return
+	for g.SpotsLeft() > 0 {
+		if g.Hands[g.SpotsLeft()-1].handValue() > 21 {
+			continue
+		}
+		for g.Hands[g.SpotsLeft()-1].handValue() < 17 {
+			g.Deck.Deal(&g.Hands[g.SpotsLeft()-1])
+			if g.Hands[g.SpotsLeft()-1].handValue() > 21 {
+				break
+			}
+		}
 	}
-	for g.DealerHand.handValue() < 17 {
-		g.Deck.Deal(&g.DealerHand)
-		// fmt.Println("Dealer:", g.DealerHand.handString())
+	fmt.Println("El dealer tiene:", g.Hands[0].handString())
+	for i := 1; i < len(g.Hands); i++ {
+		if g.Hands[i].handValue() > 21 {
+			fmt.Printf("El jugador %d se pasó con %d\n", i+1, g.Hands[i].handValue())
+		} else if g.Hands[0].handValue() > 21 {
+			fmt.Printf("El jugador %d ganó con %d\n", i+1, g.Hands[i].handValue())
+			g.Scores[i]++
+		} else if g.Hands[i].handValue() > g.Hands[0].handValue() {
+			fmt.Printf("El jugador %d ganó con %d\n", i+1, g.Hands[i].handValue())
+			g.Scores[i]++
+		} else if g.Hands[i].handValue() < g.Hands[0].handValue() {
+			fmt.Printf("El jugador %d perdió con %d\n", i+1, g.Hands[i].handValue())
+			g.Scores[0]++
+		} else {
+			fmt.Printf("El jugador %d empató con el dealer con %d\n", i+1, g.Hands[i].handValue())
+		}
 	}
-	fmt.Println("Dealer:", g.DealerHand.handString())
-	g.DealerScore = g.DealerHand.handValue()
+	g.IsGameOver = true
+}
+
+func (g *BlackjackGame) SpotsLeft() int {
+	count := 0
+	for i := range g.Hands {
+		if len(g.Hands[i].Cards) == 0 {
+			count++
+		}
+	}
+	return len(g.Hands) - count
 }
 
 func (g *BlackjackGame) checkGameStatus() {
-	if g.PlayerHand.handValue() > 21 {
-		fmt.Println("Te pasaste! El Dealer Gano!")
-		g.IsGameOver = true
-		return
-	}
-	if g.DealerHand.handValue() > 21 {
-		fmt.Println("El Dealer se paso! Tu Ganaste!")
-		g.IsGameOver = true
+	spotsLeft := g.SpotsLeft()
+	if spotsLeft == 0 {
+		g.playDealer()
 		return
 	}
 	if !g.IsPlayerTurn {
-		if g.PlayerHand.handValue() > g.DealerHand.handValue() {
-			fmt.Println("Tu Ganaste!")
-			g.IsGameOver = true
-			return
-		} else if g.DealerHand.handValue() > g.PlayerHand.handValue() {
-			fmt.Println("El Dealer Gano!")
-			g.IsGameOver = true
-			return
-		} else {
-			fmt.Println("Empate, Nadie Gano!")
-			g.IsGameOver = true
-			return
+		g.playDealer()
+		return
+	}
+	for i := 0; i < len(g.Hands); i++ {
+		if g.Hands[i].handValue() == 21 {
+			fmt.Printf("¡Jugador %d hizo Blackjack!\n", i+1)
+			g.Scores[i]++
+			g.Hands[i] = Hand{}
+		} else if g.Hands[i].handValue() > 21 {
+			fmt.Printf("¡El jugador %d se pasó con %d!\n", i+1, g.Hands[i].handValue())
+			g.Scores[0]++
+			g.Hands[i] = Hand{}
 		}
 	}
 }
 
-func (g *BlackjackGame) Hit() {
+func (g *BlackjackGame) Hit(playerNum int) {
 	if g.IsGameOver {
 		return
 	}
-	g.Deck.Deal(&g.PlayerHand)
-	if g.PlayerHand.handValue() >= 21 {
-		//g.IsGameOver = true
-		g.Stay()
-	} else {
-		fmt.Println("Tienes en tu mano:", g.PlayerHand.handString())
-		fmt.Print("¿Quieres pedir de nuevo? (y/n): ")
-		var answer string
-		fmt.Scan(&answer)
-		if strings.ToLower(answer) == "y" {
-			g.Hit()
-		} else {
-			g.Stay()
-		}
-	}
+	g.Deck.Deal(&g.Hands[playerNum])
+	fmt.Printf("Jugador %d tiene en su mano: %s\n", playerNum+1, g.Hands[playerNum].handString())
+	g.checkGameStatus()
 }
 
-func (g *BlackjackGame) Stay() {
+func (g *BlackjackGame) Stay(playerNum int) {
 	if g.IsGameOver {
 		return
 	}
-	fmt.Println("Te quedaste con:", g.PlayerHand.handString())
-	g.IsPlayerTurn = false
-	g.playDealer()
+	fmt.Printf("Jugador %d se queda con %s\n", playerNum+1, g.Hands[playerNum].handString())
 	g.checkGameStatus()
 }
 
 func (g *BlackjackGame) Run() {
-	fmt.Println("Juguemos al blackjack!")
-	fmt.Println("Tienes en tu mano:", g.PlayerHand.handString())
-	fmt.Println("Tarjeta boca arriba del Dealer:", g.DealerHand.Cards[0].String())
+	fmt.Println("¡Juguemos al Blackjack!")
+	for i := 0; i < len(g.Hands); i++ {
+		fmt.Printf("Jugador %d tiene en su mano: %s\n", i+1, g.Hands[i].handString())
+	}
 	for g.IsPlayerTurn {
-		if g.PlayerHand.handValue() == 21 {
-			fmt.Println("Hiciste ¡Blackjack! ¡Ganaste!")
-			break
+		g.checkGameStatus()
+		for i, _ := range g.Hands {
+			if len(g.Hands[i].Cards) == 0 {
+				continue
+			}
+			fmt.Printf("Jugador %d: ¿Quieres pedir o quedarte? (p/q): ", i+1)
+			var answer string
+			fmt.Scan(&answer)
+			if strings.ToLower(answer) == "p" {
+				g.Hit(i)
+			} else if strings.ToLower(answer) == "q" {
+				g.Stay(i)
+			} else {
+				fmt.Println("Entrada inválida, inténtalo de nuevo")
+				i--
+			}
 		}
-		if g.DealerHand.handValue() == 21 {
-			fmt.Println("Dealer:", g.DealerHand.handString())
-			fmt.Println("El Dealer hizo ¡Blackjack! Perdiste!")
+		if g.SpotsLeft() == 0 {
 			break
-		}
-		fmt.Print("¿Quieres pedir o te quedas? pedir(hit)/quedarse(stay) (h/s): ")
-		var answer string
-		fmt.Scan(&answer)
-		if strings.ToLower(answer) == "h" {
-			g.Hit()
-		} else if strings.ToLower(answer) == "s" {
-			g.Stay()
-		} else {
-			fmt.Println("Entrada no válida, inténtalo de nuevo.")
 		}
 	}
+	fmt.Println("\nPuntuaciones finales:")
+	for i := range g.Hands {
+		fmt.Printf("Jugador %d: %d\n", i+1, g.Scores[i])
+	}
+}
+
+func main() {
+	game := NewBlackjackGame(4)
+	game.Run()
 }
