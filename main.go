@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/CarlosIvanSoto/blackjack-go/game"
+	"github.com/CarlosIvanSoto/blackjack-go/models"
 	"github.com/gorilla/websocket"
 )
 
@@ -58,12 +59,17 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", handleConnection)
+	// http.HandleFunc("/", handleConnection)
 
-	log.Println("Escuchando en :8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal(err)
-	}
+	// log.Println("Escuchando en :8080...")
+	// if err := http.ListenAndServe(":8080", nil); err != nil {
+	// 	log.Fatal(err)
+	// }
+	game := models.NewBlackjack()
+	game.AddPlayer(100)
+	game.AddPlayer(102)
+	game.Run()
+
 }
 
 // Agrega estas funciones a la estructura BlackjackGame

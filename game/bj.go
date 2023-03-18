@@ -82,6 +82,7 @@ type Deck struct {
 	Cards []Card
 }
 
+// Crea un nuevo deck para su uso
 func NewDeck() *Deck {
 	deck := &Deck{}
 	for i := 1; i <= 13; i++ {
@@ -93,6 +94,7 @@ func NewDeck() *Deck {
 	return deck
 }
 
+// Mezcla el Deck
 func (d *Deck) Shuffle() {
 	rand.Seed(time.Now().UnixNano())
 
@@ -102,6 +104,7 @@ func (d *Deck) Shuffle() {
 	}
 }
 
+// Añade una carta del deck a la mano y la retira del deck
 func (d *Deck) Deal(h *Hand) {
 	if len(d.Cards) == 0 {
 		return
