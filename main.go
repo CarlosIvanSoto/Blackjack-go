@@ -7,6 +7,11 @@ import (
 
 	"github.com/CarlosIvanSoto/blackjack-go/models"
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/gorilla/handlers"
+)
+
+const (
+	port = "8447"
 )
 
 func main() {
@@ -44,13 +49,13 @@ func main() {
 	go io.Serve()
 	defer io.Close()
 
-	// Manejar rutas de HTTP
-	// headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
-	// originsOk := handlers.AllowedOrigins([]string{"*"})
-	// methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-	// http.Handle("/socket.io/", handlers.CORS(originsOk, headersOk, methodsOk)(io))
-	// http.Handle("/", handlers.CORS(originsOk, headersOk, methodsOk)(http.FileServer(http.Dir("./asset"))))
-	//
+	//Manejar rutas de HTTP
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	http.Handle("/socket.io/", handlers.CORS(originsOk, headersOk, methodsOk)(io))
+	http.Handle("/", handlers.CORS(originsOk, headersOk, methodsOk)(http.FileServer(http.Dir("./asset"))))
+
 	// http.Handle("/socket.io/", io)
 	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 	//     // Habilitar CORS
@@ -62,11 +67,11 @@ func main() {
 	// })
 
 	// Manejar rutas de HTTP
-	http.Handle("/socket.io/", io)
-	http.Handle("/", http.FileServer(http.Dir("./asset")))
+	// http.Handle("/socket.io/", io)
+	// http.Handle("/", http.FileServer(http.Dir("./asset")))
 	// Iniciar el servidor HTTP
-	log.Println("Servidor escuchando en el puerto 8000...")
-	log.Fatal(http.ListenAndServe(":7777", nil))
+	log.Println("Servidor escuchando en el puerto " + port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	// game := models.NewBlackjack()
 	// game.AddPlayer(100)
