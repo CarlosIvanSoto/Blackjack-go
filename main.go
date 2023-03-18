@@ -1,75 +1,76 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/CarlosIvanSoto/blackjack-go/game"
 	"github.com/CarlosIvanSoto/blackjack-go/models"
-	"github.com/gorilla/websocket"
+	socketio "github.com/googollee/go-socket.io"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-type Message struct {
-	Action string `json:"action"`
-	Player int    `json:"player"`
-}
-
-func handleConnection(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer conn.Close()
-
-	game := game.NewBlackjackGame(4)
-	game.BroadcastGameState(conn)
-
-	for {
-		_, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Error al leer el mensaje:", err)
-			break
-		}
-
-		var msg Message
-		if err := json.Unmarshal(p, &msg); err != nil {
-			log.Println("Error al decodificar el mensaje:", err)
-			break
-		}
-
-		switch msg.Action {
-		case "hit":
-			game.Hit(msg.Player)
-		case "stay":
-			game.Stay(msg.Player)
-		}
-
-		game.BroadcastGameState(conn)
-	}
-}
-
 func main() {
-	// http.HandleFunc("/", handleConnection)
-
-	// log.Println("Escuchando en :8080...")
-	// if err := http.ListenAndServe(":8080", nil); err != nil {
-	// 	log.Fatal(err)
-	// }
+	// var game models.Blackjack
 	game := models.NewBlackjack()
-	game.AddPlayer(100)
-	game.AddPlayer(102)
-	game.Run()
+	// Crear un servidor Socket.IO
+	io := socketio.NewServer(nil)
+
+	// Manejar eventos de conexión de clientes
+	io.OnConnect("/", func(s socketio.Conn) error {
+		s.SetContext("")
+		fmt.Println("connected:", s.ID())
+		game.AddPlayer(101)
+		return nil
+
+	})
+	io.OnEvent("/", "start", func(s socketio.Conn) {
+		fmt.Println("start for:", s.ID())
+		game.Start(s)
+	})
+
+	io.OnEvent("/", "hit", func(s socketio.Conn) {
+	})
+	io.OnEvent("/", "message", func(s socketio.Conn, msg string) {
+		fmt.Println("message:", msg)
+		s.Emit("reply", "have "+msg)
+	})
+	io.OnError("/", func(s socketio.Conn, e error) {
+		fmt.Println("meet error:", e)
+	})
+	io.OnDisconnect("/", func(s socketio.Conn, reason string) {
+		fmt.Println("closed", reason)
+	})
+
+	go io.Serve()
+	defer io.Close()
+
+	// Manejar rutas de HTTP
+	// headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	// originsOk := handlers.AllowedOrigins([]string{"*"})
+	// methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	// http.Handle("/socket.io/", handlers.CORS(originsOk, headersOk, methodsOk)(io))
+	// http.Handle("/", handlers.CORS(originsOk, headersOk, methodsOk)(http.FileServer(http.Dir("./asset"))))
+	//
+	// http.Handle("/socket.io/", io)
+	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	//     // Habilitar CORS
+	//     w.Header().Set("Access-Control-Allow-Origin", "*")
+	//     w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	//     w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	// 	http.FileServer(http.Dir("./asset"))
+	//     // Resto del código aquí
+	// })
+
+	// Manejar rutas de HTTP
+	http.Handle("/socket.io/", io)
+	http.Handle("/", http.FileServer(http.Dir("./asset")))
+	// Iniciar el servidor HTTP
+	log.Println("Servidor escuchando en el puerto 8000...")
+	log.Fatal(http.ListenAndServe(":7777", nil))
+
+	// game := models.NewBlackjack()
+	// game.AddPlayer(100)
+	// game.AddPlayer(102)
+	// game.Run()
 
 }
-
-// Agrega estas funciones a la estructura BlackjackGame

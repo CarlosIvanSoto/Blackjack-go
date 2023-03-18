@@ -23,5 +23,5 @@ type Blackjack struct {
 	Players         []Player
 	Hands           []Hand
 	IsGameOver      bool
-	bet             []int
+	Bet             []int
 }

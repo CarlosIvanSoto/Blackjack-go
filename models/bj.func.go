@@ -1,8 +1,12 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
+
+	socketio "github.com/googollee/go-socket.io"
 )
 
 var (
@@ -22,8 +26,27 @@ func NewBlackjack() *Blackjack {
 		Deck:       deck,
 		IsGameOver: false,
 	}
-
+	println("Game create!")
 	return &game
+}
+func (g *Blackjack) Start(s socketio.Conn) {
+	g.Message = "Juegemos al Blackjack!"
+	// Repartir cartas a los jugadores
+	g.IndexPlayerTurn = 0
+	hands := make([]Hand, len(g.Players))
+	g.Hands = hands
+	for i := 0; i < len(g.Players); i++ {
+		g.Deck.Deal(&g.Hands[i])
+		g.Deck.Deal(&g.Hands[i])
+	}
+	// Repartir al dealer
+	g.Deck.Deal(&g.DealerHand)
+	g.Deck.Deal(&g.DealerHand)
+
+	println("juego iniciado")
+	//Emite el estado del juego
+	g.BroadcastGameState(s)
+
 }
 
 // Methodo para iniciar el juego
@@ -57,7 +80,10 @@ func (g *Blackjack) Run() {
 // Pregunta al jugador si desea pedir o quedarse
 func (g *Blackjack) ask() {
 	i := g.IndexPlayerTurn
-	fmt.Printf("Jugador %s: ¿Quieres pedir o quedarte? (p/q): ", g.Players[i].Name)
+	msn := fmt.Sprintf("Jugador %s: ¿Quieres pedir o quedarte? (p/q): ", g.Players[i].Name)
+	print(msn)
+	g.Message = msn
+
 	var answer string
 	fmt.Scan(&answer)
 	if strings.ToLower(answer) == "p" {
@@ -77,6 +103,7 @@ func (bj *Blackjack) AddPlayer(id int) {
 			// Found!
 			bj.Players = append(bj.Players, playerList[i])
 			// bj.Scores = append(bj.Scores, playerList[i].Coins)
+			println("entro el jugador :" + playerList[i].Name)
 		}
 	}
 }
@@ -152,4 +179,17 @@ func (g *Blackjack) Stay() {
 	fmt.Printf("Jugador %s se queda con %s\n", g.Players[i].Name, g.Hands[i].handString())
 	g.nextPlayer()
 	// g.checkPlayerStatus()
+}
+
+func (g *Blackjack) BroadcastGameState(s socketio.Conn) {
+
+	gameState, err := json.Marshal(g)
+	if err != nil {
+		log.Println("Error al serializar el estado del juego:", err)
+		return
+	}
+	println(gameState)
+	println("Broadcast State")
+
+	s.Emit("state", gameState)
 }
