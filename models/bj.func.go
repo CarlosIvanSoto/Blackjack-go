@@ -108,6 +108,20 @@ func (bj *Blackjack) AddPlayer(id int) {
 	}
 }
 
+// Agrega un nuevo jugador a la game con un id, para buscarlo
+func (bj *Blackjack) RemovePlayer(id int) {
+	for i := range playerList {
+		if playerList[i].Id == id {
+			// Found!
+			//bj.Players = append(bj.Players, playerList[i])
+			bj.Players = bj.Players[:len(bj.Players)-1]
+			// bj.Players[len(bj.Players)-1]
+			// bj.Scores = append(bj.Scores, playerList[i].Coins)
+			println("salio el jugador :" + playerList[i].Name)
+		}
+	}
+}
+
 // Juega la partida del Dealer, hasta llegar a 17.
 func (g *Blackjack) playDealer() {
 	fmt.Printf("El dealer tiene: %s\n", g.DealerHand.handString())
@@ -183,13 +197,13 @@ func (g *Blackjack) Stay() {
 
 func (g *Blackjack) BroadcastGameState(s socketio.Conn) {
 
-	gameState, err := json.Marshal(g)
+	gameState, err := json.Marshal(&g)
 	if err != nil {
 		log.Println("Error al serializar el estado del juego:", err)
 		return
 	}
-	println(gameState)
+	// println(string(gameState))
 	println("Broadcast State")
 
-	s.Emit("state", gameState)
+	s.Emit("state", string(gameState))
 }
